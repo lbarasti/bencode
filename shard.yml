@@ -6,4 +6,10 @@ authors:
 
 crystal: 0.35.1
 
+dependencies:
+  pars3k:
+    github: voximity/pars3k
+  dataclass:
+    github: lbarasti/dataclass
+
 license: MIT
