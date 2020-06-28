@@ -1,14 +1,6 @@
 require "pars3k"
 require "dataclass"
 
-include Pars3k
-
-abstract class BencodeTerm; end
-dataclass Str{s : String} < BencodeTerm
-dataclass Integer{i : Int64} < BencodeTerm
-dataclass List{l : Array(BencodeTerm)} < BencodeTerm
-dataclass Dict{d : Array({Str, BencodeTerm})} < BencodeTerm
-
 class Pars3k::Parse
   def self.any : Parser(Char)
     Parser(Char).new do |context|
@@ -21,83 +13,168 @@ class Pars3k::Parse
   end
 
   def self.n_of(parser : Parser(T), n : Int) : Parser(Array(T)) forall T
-			Parser(Array(T)).new do |ctx|
-				result = parser.block.call ctx
-				results = Array(T).new(n)
-				context = ctx
-				count = 1
+      Parser(Array(T)).new do |ctx|
+        result = parser.block.call ctx
+        results = Array(T).new(n)
+        context = ctx
+        count = 1
         n.times {
           context = result.context
-					results << result.definite_value
-					result = parser.block.call context
+          results << result.definite_value
+          result = parser.block.call context
           break if result.errored
         }
-				ParseResult(Array(T)).new results, context
-			end
-		end
+        ParseResult(Array(T)).new results, context
+      end
+    end
 end
 
-def str_parser
-  do_parse({
-    l <= Parse.int,
-    _ <= Parse.char(':'),
-    s <= Parse.n_of(Parse.any, l),
-    Parse.constant(Str.new(s.join).as(BencodeTerm))
-  })
+include Pars3k
+
+module Bencode
+  extend self
+
+  abstract class Any
+    def as_h : Hash(String, Any)
+      self.as(Dict).d.to_h
+    end
+
+    def as_a : Array(Any)
+      self.as(List).l
+    end
+
+    def as_i : Int64
+      self.as(Integer).i
+    end
+
+    def as_s : String
+      self.as(Str).s
+    end
+  end
+
+  dataclass Str{s : String} < Any
+  dataclass Integer{i : Int64} < Any
+  dataclass List{l : Array(Any)} < Any
+  dataclass Dict{d : Hash(String, Any)} < Any
+
+  def str_parser
+    do_parse({
+      l <= Parse.int,
+      _ <= Parse.char(':'),
+      s <= Parse.n_of(Parse.any, l),
+      Parse.constant(Str.new(s.join).as(Any))
+    })
+  end
+
+  def int_parser
+    do_parse({
+      _ <= Parse.char('i'),
+      h <= Parse.char('-') | Parse.digit,
+      s <= Parse.many_of(Parse.digit),
+      _ <= Parse.char('e'),
+      res = [h].concat(s).join.to_i64,
+      Parse.constant(Integer.new(res).as(Any))
+    })
+  end
+
+  def list_parser
+    do_parse({
+      _ <= Parse.char('l'),
+      values <= Parse.many_of(bencode_parser),
+      _ <= Parse.char('e'),
+      Parse.constant(List.new(values).as(Any))
+    })
+  end
+
+  def key_val_parse
+    do_parse({
+      key <= str_parser,
+      val <= bencode_parser,
+      Parse.constant({key.as(Str).s, val})
+    })
+  end
+
+  def dict_parser
+    do_parse({
+      _ <= Parse.char('d'),
+      pairs <= Parse.many_of(key_val_parse),
+      _ <= Parse.char('e'),
+      Parse.constant(Dict.new(pairs.to_h).as(Any))
+    })
+  end
+
+  def bencode_parser : Parser(Any)
+    str_parser | int_parser | list_parser | dict_parser
+  end
+
+  def parse(io : String | IO) : Any
+    bencode_parser.parse(io).as(Any)
+  end
 end
 
-def int_parser
-  do_parse({
-    _ <= Parse.char('i'),
-    h <= Parse.char('-') | Parse.digit,
-    s <= Parse.many_of(Parse.digit),
-    _ <= Parse.char('e'),
-    res = [h].concat(s).join.to_i64,
-    Parse.constant(Integer.new(res).as(BencodeTerm))
-  })
+class Array(T)
+  def self.from_bencode(term : Any)
+    term.as_a.map { |element|
+      T.from_bencode(element)
+    }
+  end
 end
 
-def list_parser
-  do_parse({
-    _ <= Parse.char('l'),
-    values <= Parse.many_of(bencode_parser),
-    _ <= Parse.char('e'),
-    Parse.constant(List.new(values).as(BencodeTerm))
-  })
+class Hash(K,V)
+  def self.from_bencode(term : Any)
+    term.as_h.map { |key, val|
+      {key, V.from_bencode(val)}
+    }.to_h
+  end
 end
 
-def key_val_parse
-  do_parse({
-    key <= str_parser,
-    val <= bencode_parser,
-    Parse.constant({key.as(Str), val})
-  })
+struct Int64
+  def self.from_bencode(term : Any)
+    term.as_i
+  end
 end
 
-def dict_parser
-  do_parse({
-    _ <= Parse.char('d'),
-    pairs <= Parse.many_of(key_val_parse),
-    _ <= Parse.char('e'),
-    Parse.constant(Dict.new(pairs).as(BencodeTerm))
-  })
+class String
+  def self.from_bencode(term : Any)
+    term.as_s
+  end
 end
 
-def bencode_parser : Parser(BencodeTerm)
-  str_parser | int_parser | list_parser | dict_parser
+module Bencode::Serializable
+  macro included
+    def self.from_bencode(bin : Any)
+      dict = bin.as_h
+      
+      \{% begin %}
+        \{% for ivar in @type.instance_vars %}
+        \%var{ivar.id} = \{{ivar.type}}.from_bencode(dict[\{{ivar.id.stringify}}])
+        \{% end %}
+
+        self.new(\{% for ivar in @type.instance_vars %}
+          \{{ivar.id}}: \%var{ivar.id},
+        \{% end %})
+      \{% end %}
+    end
+  end
 end
 
-# list = "l4:spam4:eggsi5ee"
-# dict = "d3:hit#{list}e"
+dataclass A{one : String, two : Int64} do
+  include Bencode::Serializable
+end
 
-# puts str_parser.parse("4:spamh")
-# puts str_parser.parse("0:")
-# puts int_parser.parse("i-5e")
-# puts int_parser.parse("i052e")
-# puts list_parser.parse("le")
-# puts list_parser.parse(list)
-# puts list_parser.parse("l#{list}e")
-# puts dict_parser.parse("d3:hit#{list}e")
-# puts dict_parser.parse("d4:hell#{dict}e")
-# puts dict_parser.parse("de")
+dataclass W{a : A, l : Array(Int64)} do
+  include Bencode::Serializable
+end
+
+# bin = bencode_parser.parse("d3:one4:hell3:twoi-23ee").as(Any)
+# bin_list = bencode_parser.parse("ld3:one4:hell3:twoi-23eee").as(Any)
+# bin_dict = bencode_parser.parse("d3:oned3:one4:hell3:twoi-23eee").as(Any)
+# bin_w = bencode_parser.parse("d1:ad3:one4:hell3:twoi-23ee1:llee").as(Any)
+
+# puts A.from_bencode(bin)
+# puts W.from_bencode(bin_w)
+# puts Hash(String, A).from_bencode(bin_dict)
+# puts Array(A).from_bencode(bin_list)
+# puts Int64.from_bencode(Integer.new(1))
+# puts String.from_bencode(Str.new("hello"))
 
