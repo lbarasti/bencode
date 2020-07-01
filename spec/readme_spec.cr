@@ -5,6 +5,7 @@ class Location
 
   property lat : Int64
   property lng : Int64
+
   def initialize(@lat, @lng)
   end
 end
@@ -14,6 +15,7 @@ class House
 
   property address : String
   property location : Location
+
   def initialize(@address, @location)
   end
 end

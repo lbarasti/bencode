@@ -23,7 +23,7 @@ describe Bencode do
     dict_1 = "d1:xi1e1:yi2ee"
     dict_2 = "d3:hit#{list}e"
 
-    it "parses bencode strings into primitive types" do      
+    it "parses bencode strings into primitive types" do
       Bencode.parse("4:spamh").should eq "spam"
       Bencode.parse("0:").should eq ""
       Bencode.parse("i-5e").as(Int64).should eq -5_i64
@@ -58,7 +58,7 @@ describe Bencode do
       end
     end
   end
-  
+
   describe "Bencode deserialization" do
     a = "d3:one4:hell3:twoi-23ee"
     list_of_a = "ld3:one4:hell3:twoi-23eed3:one3:the3:twoi42eee"

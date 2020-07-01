@@ -4,16 +4,19 @@ class Array(T)
   def self.from_bencode(bencode : String)
     _from_bencode Bencode.parse(bencode)
   end
+
   def self._from_bencode(bencode : Bencode::Type)
     bencode.as(Array).map { |element|
       T._from_bencode(element)
     }
   end
+
   def to_bencode : String
     String.build { |str|
       to_bencode str
     }
   end
+
   def to_bencode(io : IO)
     io << 'l'
     self.each { |el|
@@ -23,20 +26,23 @@ class Array(T)
   end
 end
 
-class Hash(K,V)
+class Hash(K, V)
   def self.from_bencode(bencode : String)
     _from_bencode Bencode.parse(bencode)
   end
+
   def self._from_bencode(bencode : Bencode::Type)
     bencode.as(Hash).map { |key, val|
       {key, V._from_bencode(val)}
     }.to_h
   end
+
   def to_bencode : String
     String.build { |str|
       to_bencode str
     }
   end
+
   def to_bencode(io : IO)
     io << 'd'
     self.keys.sort.each { |k|
@@ -51,6 +57,7 @@ struct Int
   def self.from_bencode(bencode : String)
     _from_bencode Bencode.parse(bencode)
   end
+
   def self._from_bencode(bencode : Bencode::Type)
     bencode.as(Int64)
   end
@@ -60,6 +67,7 @@ struct Int
       to_bencode str
     }
   end
+
   def to_bencode(io : IO)
     io << 'i'
     self.to_s io
@@ -71,14 +79,17 @@ class String
   def self.from_bencode(bencode : String)
     _from_bencode Bencode.parse(bencode)
   end
+
   def self._from_bencode(bencode : Bencode::Type)
     bencode.as(String)
   end
+
   def to_bencode : String
     String.build { |str|
       to_bencode str
     }
   end
+
   def to_bencode(io : IO)
     io << self.bytesize
     io << ':'

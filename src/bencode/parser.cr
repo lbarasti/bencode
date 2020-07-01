@@ -9,11 +9,11 @@ module Bencode
 
   def parse?(input : String | IO)
     io = case input
-    in String
-      IO::Memory.new(input)
-    in IO
-      input
-    end
+         in String
+           IO::Memory.new(input)
+         in IO
+           input
+         end
     result = nil
     while c = io.read_char
       case c
@@ -33,7 +33,7 @@ module Bencode
       when 'i'
         result = io.gets('e', chomp: true).not_nil!.to_i64
       when 'e' # end of context
-      else # string start
+      else     # string start
         str_size = c.to_i
         while (i = io.read_char) != ':'
           str_size = str_size * 10 + i.not_nil!.to_i
