@@ -9,6 +9,10 @@ dataclass W{a : A, l : Array(Int64)} do
   include Bencode::Serializable
 end
 
+dataclass Z{c : String, b : Int64, a : String} do
+  include Bencode::Serializable
+end
+
 describe Bencode do
   it "has a version" do
     Bencode::VERSION.should eq "0.1.0"
@@ -113,6 +117,12 @@ describe Bencode do
       Hash(String, Int64).from_bencode(dict.to_bencode).should eq dict
     end
 
+    it "serializes Hash's keys in lexicographic order" do
+      dict = {"b" => 6_i64, "a" => 0_i64}
+      dict.to_bencode.should eq "d1:ai0e1:bi6ee"
+      Hash(String, Int64).from_bencode(dict.to_bencode).should eq dict
+    end
+
     it "can serialize custom types" do
       obj = A.new("hello", -23)
       obj.to_bencode.should eq "d3:one5:hello3:twoi-23ee"
@@ -121,6 +131,12 @@ describe Bencode do
       wrapper_obj = W.new(a: obj, l: [42_i64, 6_i64])
       wrapper_obj.to_bencode.should eq "d1:ad3:one5:hello3:twoi-23ee1:lli42ei6eee"
       W.from_bencode(wrapper_obj.to_bencode).should eq wrapper_obj
+    end
+
+    it "serializes custom types' fields in lexicographic order" do
+      obj = Z.new("one", -23, "two")
+      obj.to_bencode.should eq "d1:a3:two1:bi-23e1:c3:onee"
+      Z.from_bencode(obj.to_bencode).should eq obj
     end
   end
 end

@@ -1,6 +1,6 @@
 # bencode
 
-A Crystal shard providing serialization and deserialization utilities to parse and produce Bencode-encoded strings.
+A Crystal shard providing serialization and deserialization utilities to parse and generate [Bencode](https://en.wikipedia.org/wiki/Bencode)-encoded strings.
 
 ## Installation
 
@@ -114,6 +114,11 @@ Parsing with `Bencode.parse` is useful for dealing with a dynamic Bencode struct
 
 ### Generating with to_bencode
 `to_bencode` and `to_bencode(IO)` methods are provided for primitive types, but you need to define `to_bencode(IO)` for custom objects, either manually or using Bencode::Serializable.
+
+## Credits
+* [Hamdiakoguz's  bencoding.cr](https://github.com/Hamdiakoguz/bencoding.cr) has been a huge inspiration for the implementation of the parser. I would have used their shard directly, if it wasn't that `crystal` has evolved with some breaking API changes since the shard was last updated
+* I also used [jackpal's bencode-go](https://github.com/jackpal/bencode-go) as a reference implementation
+* This repo's readme, examples and API are inspired by Crystal's [JSON package](https://crystal-lang.org/api/0.35.1/JSON.html) - [JSON::Serializable](https://crystal-lang.org/api/0.35.1/JSON/Serializable.html), in particular.
 
 ## Development
 

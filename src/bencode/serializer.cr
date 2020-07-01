@@ -39,9 +39,9 @@ class Hash(K,V)
   end
   def to_bencode(io : IO)
     io << 'd'
-    self.each { |k, v|
+    self.keys.sort.each { |k|
       k.to_bencode io
-      v.to_bencode io
+      self[k].to_bencode io
     }
     io << 'e'
   end
@@ -96,7 +96,7 @@ module Bencode::Serializable
     def to_bencode(io : IO)
       io << 'd'
       \{% begin %}
-        \{% for ivar in @type.instance_vars %}
+        \{% for ivar in @type.instance_vars.map(&.stringify).sort %}
         \{{ivar.id.stringify}}.to_bencode(io)
         \{{ivar.id}}.to_bencode(io)
         \{% end %}
