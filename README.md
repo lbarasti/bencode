@@ -1,3 +1,7 @@
+[![GitHub release](https://img.shields.io/github/release/lbarasti/bencode.svg)](https://github.com/lbarasti/bencode/releases)
+![Build Status](https://github.com/lbarasti/bencode/workflows/Crystal%20CI/badge.svg)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 # bencode
 
 A Crystal shard providing serialization and deserialization utilities to parse and generate [Bencode](https://en.wikipedia.org/wiki/Bencode)-encoded strings.
