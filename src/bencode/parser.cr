@@ -38,11 +38,8 @@ module Bencode
         while (i = io.read_char) != ':'
           str_size = str_size * 10 + i.not_nil!.to_i
         end
-        result = String.build(str_size) { |builder|
-          str_size.times {
-            builder << io.read_char
-          }
-        }
+
+        result = io.read_string(str_size)
       end
       return result
     end

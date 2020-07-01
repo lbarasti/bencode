@@ -24,6 +24,7 @@ describe Bencode do
       Bencode.parse("0:").should eq ""
       Bencode.parse("i-5e").as(Int64).should eq -5_i64
       Bencode.parse("i052e").as(Int64).should eq 52_i64
+      Bencode.parse("i42e").as(Int).should be_a Int64
       Bencode.parse("le").as(Array).should eq [] of Bencode::Type
       Bencode.parse(list).as(Array)[0].should eq "spam"
       Bencode.parse(list).as(Array)[2].should eq 5_i64
@@ -45,6 +46,12 @@ describe Bencode do
         dict["publisher"].should eq "bob"
         dict["publisher.location"].should eq "home"
       end
+
+      File.open(File.join(__DIR__, "./debian.torrent")) do |file|
+        dict = Bencode.parse(file).as(Hash)
+        dict.keys.should eq ["announce", "comment", "creation date", "httpseeds", "info"]
+        dict.to_bencode.should eq file.rewind.gets_to_end
+      end
     end
   end
   
@@ -57,8 +64,8 @@ describe Bencode do
     expected_a = A.new("hell", -23)
 
     it "can deserialize bencode into primitive types" do
-      Int64.from_bencode(64_i64).should eq(64)
-      String.from_bencode("hello").should eq "hello"
+      Int64.from_bencode("i64e").should eq(64)
+      String.from_bencode("5:hello").should eq "hello"
     end
 
     it "can deserialize bencode into custom types" do
@@ -66,10 +73,54 @@ describe Bencode do
       W.from_bencode(w).should eq W.new(a: expected_a, l: [] of Int64)
     end
 
-    it "supports collecions of custom types" do
+    it "supports collections of custom types" do
       Hash(String, A).from_bencode(dict_of_a)["one"].should eq expected_a
       Array(A).from_bencode(list_of_a).size.should eq 2
       Array(A).from_bencode(list_of_a).last.should eq A.new("the", 42)
+    end
+  end
+
+  describe "Bencode serialization" do
+    it "can serialize a String" do
+      "".to_bencode.should eq "0:"
+
+      uni = "☄\u0001\u0011”"
+      uni.to_bencode.should eq "8:☄\u0001\u0011”"
+      String.from_bencode(uni.to_bencode).should eq uni
+    end
+
+    it "can serialize a 64-bit integer" do
+      0_i64.to_bencode.should eq "i0e"
+
+      int = -24_i64
+      int.to_bencode.should eq "i-24e"
+      Int64.from_bencode(int.to_bencode).should eq int
+    end
+
+    it "can serialize an array" do
+      ([] of String).to_bencode.should eq "le"
+
+      lst = ["hello", "hey", "h\u1001i"]
+      lst.to_bencode.should eq "l5:hello3:hey5:h\u1001ie"
+      Array(String).from_bencode(lst.to_bencode).should eq lst
+    end
+
+    it "can serialize a Hash(String, *)" do
+      ({} of String => Int64).to_bencode.should eq "de"
+
+      dict = {"hello" => 6_i64, "\u1001\u1000" => 0_i64}
+      dict.to_bencode.should eq "d5:helloi6e6:\u1001\u1000i0ee"
+      Hash(String, Int64).from_bencode(dict.to_bencode).should eq dict
+    end
+
+    it "can serialize custom types" do
+      obj = A.new("hello", -23)
+      obj.to_bencode.should eq "d3:one5:hello3:twoi-23ee"
+      A.from_bencode(obj.to_bencode).should eq obj
+
+      wrapper_obj = W.new(a: obj, l: [42_i64, 6_i64])
+      wrapper_obj.to_bencode.should eq "d1:ad3:one5:hello3:twoi-23ee1:lli42ei6eee"
+      W.from_bencode(wrapper_obj.to_bencode).should eq wrapper_obj
     end
   end
 end

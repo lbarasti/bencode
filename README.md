@@ -31,7 +31,7 @@ bencode_text = "d1:xi1e1:yi2ee"
 Hash(String, Int64).from_bencode(bencode_text) # => {"x" => 1, "y" => 2}
 ```
 
-Serializing is achieved by invoking `to_bencode`, which returns a `String`, or `to_bencode(io : IO)`, which will stream the JSON to an `IO`.
+Serializing is achieved by invoking `to_bencode`, which returns a `String`, or `to_bencode(io : IO)`, which will stream the Bencoding to an `IO`.
 
 ```crystal
 require "bencode"
@@ -48,21 +48,56 @@ In line with the [Bencode specification](https://wiki.theory.org/index.php/BitTo
 
 provided that `T.from_bencode(String)` and `T#to_bencode(io)` methods are defined for the type `T`. For user-defined types you can define these yourself - `from_bencode` for parsing and `to_bencode` for serializing - or you can include Bencode::Serializable in your struct or class.
 
-### Parsing with Bencode.parse
-`Bencode.parse` will return a `Any`, which is a convenient wrapper around all possible Bencode types, making it easy to traverse a complex Bencode structure by casting to the expected type, mostly via some method invocations.
+### Serializing custom types
+The Bencode::Serializable module automatically generates methods for Bencode serialization when included.
 
 ```crystal
 require "bencode"
 
-value = Bencode.parse("li1ei2ei3ee") # : Bencode::Any
+class Location
+  include Bencode::Serializable
 
-value.as_a[0]              # => 1
-typeof(value.as_a[0])      # => Bencode::Any
-value.as_a[0].as_i         # => 1
-typeof(value.as_a[0].as_i) # => Int64
+  property lat : Int64
+  property lng : Int64
+  def initialize(@lat, @lng)
+  end
+end
 
-value.as_a[0] + 1       # Error, because value[0] is Bencode::Any
-value.as_a[0].as_i + 10 # => 11
+class House
+  include Bencode::Serializable
+
+  property address : String
+  property location : Location
+  def initialize(@address, @location)
+  end
+end
+
+house = House.from_bencode("d7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eee")
+
+house.address  # => "Crystal Road 1234"
+house.location # => #<Location:0x10cd93d80 @lat=12, @lng=34>
+house.to_bencode  # => "d7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eee"
+
+houses = Array(House).from_bencode("ld7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eeee")
+houses.size    # => 1
+houses.to_bencode # => "ld7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eeee"
+```
+
+### Parsing with Bencode.parse
+`Bencode.parse` will return a `Bencode::Type`, which is an alias for the union of all possible Bencode types. This makes it necessary to cast the parsed object to the expected type, in order to traverse it.
+
+```crystal
+require "bencode"
+
+value = Bencode.parse("li1ei2ei3ee") # : Bencode::Type
+
+value.as(Array)[0]              # => 1
+typeof(value.as(Array)[0])      # => Bencode::Type
+value.as(Array)[0].as(Int)         # => 1
+typeof(value.as(Array)[0].as(Int)) # => Int64
+
+value.as_a[0] + 1       # Error, because value[0] is Bencode::Type
+value.as_a[0].as(Int) + 10 # => 11
 ```
 
 `Bencode.parse` can read from an IO directly (such as a file) which saves allocating a string:
@@ -78,7 +113,7 @@ end
 Parsing with `Bencode.parse` is useful for dealing with a dynamic Bencode structure.
 
 ### Generating with to_bencode
-`to_bencode` and `to_bencode(IO)` methods are provided for primitive types, but you need to define `to_bencode(IO)` for custom objects, either manually or using JSON::Serializable.
+`to_bencode` and `to_bencode(IO)` methods are provided for primitive types, but you need to define `to_bencode(IO)` for custom objects, either manually or using Bencode::Serializable.
 
 ## Development
 
