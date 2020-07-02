@@ -8,7 +8,7 @@ A Crystal shard providing serialization and deserialization utilities to parse a
 
 ## Installation
 
-1. Add the dependency to your `shard.yml`:
+* Add the dependency to your `shard.yml`:
 
 ```yaml
 dependencies:
@@ -16,7 +16,7 @@ dependencies:
     github: lbarasti/bencode
 ```
 
-2. Run `shards install`
+* Run `shards install`
 
 ## Usage
 
@@ -53,7 +53,9 @@ In line with the [Bencode specification](https://wiki.theory.org/index.php/BitTo
 provided that `T.from_bencode(String)` and `T#to_bencode(io)` methods are defined for the type `T`. For user-defined types you can define these yourself - `from_bencode` for parsing and `to_bencode` for serializing - or you can include Bencode::Serializable in your struct or class.
 
 ### Serializing custom types
-The Bencode::Serializable module automatically generates methods for Bencode serialization when included.
+The `Bencode::Serializable` module automatically generates methods for Bencode serialization when included.
+
+To change how individual instance variables are parsed and serialized, the annotation `Bencode::Field` can be placed on the instance variable. Annotating property, getter and setter macros is also allowed.
 
 ```crystal
 require "bencode"
@@ -61,8 +63,10 @@ require "bencode"
 class Location
   include Bencode::Serializable
 
-  property lat : Int64
+  @[Bencode::Field(key: "long")]
   property lng : Int64
+  property lat : Int64
+
   def initialize(@lat, @lng)
   end
 end
@@ -76,15 +80,15 @@ class House
   end
 end
 
-house = House.from_bencode("d7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eee")
+house = House.from_bencode("d7:address17:Crystal Road 12348:locationd3:lati12e4:longi34eee")
 
 house.address  # => "Crystal Road 1234"
 house.location # => #<Location:0x10cd93d80 @lat=12, @lng=34>
-house.to_bencode  # => "d7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eee"
+house.to_bencode  # => "d7:address17:Crystal Road 12348:locationd3:lati12e4:longi34eee"
 
-houses = Array(House).from_bencode("ld7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eeee")
+houses = Array(House).from_bencode("ld7:address17:Crystal Road 12348:locationd3:lati12e4:longi34eeee")
 houses.size    # => 1
-houses.to_bencode # => "ld7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eeee"
+houses.to_bencode # => "ld7:address17:Crystal Road 12348:locationd3:lati12e4:longi34eeee"
 ```
 
 ### Parsing with Bencode.parse

@@ -1,7 +1,7 @@
 require "./parser"
 
 class Array(T)
-  def self.from_bencode(bencode : String)
+  def self.from_bencode(bencode : String | IO)
     _from_bencode Bencode.parse(bencode)
   end
 
@@ -27,7 +27,7 @@ class Array(T)
 end
 
 class Hash(K, V)
-  def self.from_bencode(bencode : String)
+  def self.from_bencode(bencode : String | IO)
     _from_bencode Bencode.parse(bencode)
   end
 
@@ -54,7 +54,7 @@ class Hash(K, V)
 end
 
 struct Int
-  def self.from_bencode(bencode : String)
+  def self.from_bencode(bencode : String | IO)
     _from_bencode Bencode.parse(bencode)
   end
 
@@ -76,7 +76,7 @@ struct Int
 end
 
 class String
-  def self.from_bencode(bencode : String)
+  def self.from_bencode(bencode : String | IO)
     _from_bencode Bencode.parse(bencode)
   end
 
@@ -97,6 +97,11 @@ class String
   end
 end
 
+module Bencode
+  annotation Field
+  end
+end
+
 module Bencode::Serializable
   macro included
     def to_bencode : String
@@ -107,15 +112,20 @@ module Bencode::Serializable
     def to_bencode(io : IO)
       io << 'd'
       \{% begin %}
-        \{% for ivar in @type.instance_vars.map(&.stringify).sort %}
-        \{{ivar.id.stringify}}.to_bencode(io)
-        \{{ivar.id}}.to_bencode(io)
+        \{% for ivar in @type.instance_vars.sort_by { |ivar|
+          ann = ivar.annotation(::Bencode::Field)
+          ann_key = ann && ann[:key]
+          (ann_key || ivar).id.stringify}
+        %}
+          \{% ann = ivar.annotation(::Bencode::Field) %}
+          \{{((ann && ann[:key]) || ivar).id.stringify}}.to_bencode(io)
+          \{{ivar.id}}.to_bencode(io)
         \{% end %}
       \{% end %}
       io << 'e'
     end
 
-    def self.from_bencode(bencode : String)
+    def self.from_bencode(bencode : String | IO)
       _from_bencode Bencode.parse(bencode)
     end
 
@@ -124,7 +134,9 @@ module Bencode::Serializable
       
       \{% begin %}
         \{% for ivar in @type.instance_vars %}
-        \%var{ivar.id} = \{{ivar.type}}._from_bencode(dict[\{{ivar.id.stringify}}])
+          \{% ann = ivar.annotation(::Bencode::Field) %}
+          \{% key = ((ann && ann[:key]) || ivar).id.stringify %}
+          \%var{ivar.id} = \{{ivar.type}}._from_bencode(dict[\{{key}}])
         \{% end %}
 
         self.new(\{% for ivar in @type.instance_vars %}

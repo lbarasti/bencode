@@ -45,13 +45,13 @@ describe Bencode do
     end
 
     it "supports reading from IO" do
-      File.open(File.join(__DIR__, "./data.torrent")) do |file|
+      File.open(File.join(__DIR__, "./data/data.torrent")) do |file|
         dict = Bencode.parse(file).as(Hash)
         dict["publisher"].should eq "bob"
         dict["publisher.location"].should eq "home"
       end
 
-      File.open(File.join(__DIR__, "./debian.torrent")) do |file|
+      File.open(File.join(__DIR__, "./data/debian.torrent")) do |file|
         dict = Bencode.parse(file).as(Hash)
         dict.keys.should eq ["announce", "comment", "creation date", "httpseeds", "info"]
         dict.to_bencode.should eq file.rewind.gets_to_end

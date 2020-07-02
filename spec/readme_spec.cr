@@ -4,6 +4,7 @@ class Location
   include Bencode::Serializable
 
   property lat : Int64
+  @[Bencode::Field(key: "long")]
   property lng : Int64
 
   def initialize(@lat, @lng)
@@ -45,7 +46,7 @@ describe "README samples" do
   end
 
   it "can add ser/de to custom types by including the Serialize module" do
-    house_bencode = "d7:address17:Crystal Road 12348:locationd3:lati12e3:lngi34eee"
+    house_bencode = "d7:address17:Crystal Road 12348:locationd3:lati12e4:longi34eee"
     house_list_bencode = "l#{house_bencode}e"
 
     house = House.from_bencode(house_bencode)
