@@ -15,7 +15,7 @@ end
 
 describe Bencode do
   it "has a version" do
-    Bencode::VERSION.should eq "0.1.0"
+    Bencode::VERSION.should eq "0.2.0"
   end
 
   describe "Bencode.parse" do
