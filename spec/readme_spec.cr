@@ -21,6 +21,13 @@ class House
   end
 end
 
+record ReadmeSpec::A, a : String, b : Int64 do
+  def self._from_bencode(obj : Bencode::Type)
+    a, b = obj.as(Array)
+    new a.as(String), b.as(Int64)
+  end
+end
+
 describe "README samples" do
   it "supports basic data types" do
     bencode_text = "li1ei2ei3ee"
@@ -58,5 +65,17 @@ describe "README samples" do
     houses = Array(House).from_bencode(house_list_bencode)
     houses.size.should eq 1
     houses.to_bencode.should eq house_list_bencode
+  end
+
+  it "supports custom deserializers" do
+    bencode = "l5:helloi-42ee"
+    a = ReadmeSpec::A.from_bencode bencode
+    a.should eq ReadmeSpec::A.new("hello", -42)
+  end
+
+  it "supports custom deserializers on nested types" do
+    bencode = "d3:keyl5:helloi-42ee"
+    a = Hash(String, ReadmeSpec::A).from_bencode bencode
+    a["key"].should eq ReadmeSpec::A.new("hello", -42)
   end
 end

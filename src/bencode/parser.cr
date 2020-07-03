@@ -8,40 +8,30 @@ module Bencode
   end
 
   def parse?(input : String | IO)
-    io = case input
-         in String
-           IO::Memory.new(input)
-         in IO
-           input
-         end
-    result = nil
-    while c = io.read_char
-      case c
-      when 'l'
-        list = [] of Bencode::Type
-        while el = parse?(io)
-          list << el unless el.nil?
-        end
-        result = list
-      when 'd'
-        hash = Hash(String, Bencode::Type).new
-        while key = parse?(io)
-          value = parse?(io).not_nil!
-          hash[key.as(String)] = value
-        end
-        result = hash
-      when 'i'
-        result = io.gets('e', chomp: true).not_nil!.to_i64
-      when 'e' # end of context
-      else     # string start
-        str_size = c.to_i
-        while (i = io.read_char) != ':'
-          str_size = str_size * 10 + i.not_nil!.to_i
-        end
+    io = input.is_a?(String) ? IO::Memory.new(input) : input
 
-        result = io.read_string(str_size)
+    case c = io.read_char
+    when 'l'
+      list = [] of Bencode::Type
+      while el = parse?(io)
+        list << el unless el.nil?
       end
-      return result
+      list
+    when 'd'
+      hash = Hash(String, Bencode::Type).new
+      while key = parse?(io)
+        value = parse?(io).not_nil!
+        hash[key.as(String)] = value
+      end
+      hash
+    when 'i'
+      io.gets('e', chomp: true).not_nil!.to_i64
+    when 'e', nil # end of context
+    else          # string start
+      io.pos = io.pos - 1
+      str_size = io.gets(':', chomp: true).not_nil!.to_i
+
+      io.read_string(str_size)
     end
   end
 end

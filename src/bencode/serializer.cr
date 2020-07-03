@@ -1,19 +1,21 @@
 require "./parser"
 
-class Array(T)
+class Object
   def self.from_bencode(bencode : String | IO)
     _from_bencode Bencode.parse(bencode)
-  end
-
-  def self._from_bencode(bencode : Bencode::Type)
-    bencode.as(Array).map { |element|
-      T._from_bencode(element)
-    }
   end
 
   def to_bencode : String
     String.build { |str|
       to_bencode str
+    }
+  end
+end
+
+class Array(T)
+  def self._from_bencode(bencode : Bencode::Type)
+    bencode.as(Array).map { |element|
+      T._from_bencode(element)
     }
   end
 
@@ -27,20 +29,10 @@ class Array(T)
 end
 
 class Hash(K, V)
-  def self.from_bencode(bencode : String | IO)
-    _from_bencode Bencode.parse(bencode)
-  end
-
   def self._from_bencode(bencode : Bencode::Type)
     bencode.as(Hash).map { |key, val|
       {key, V._from_bencode(val)}
     }.to_h
-  end
-
-  def to_bencode : String
-    String.build { |str|
-      to_bencode str
-    }
   end
 
   def to_bencode(io : IO)
@@ -54,18 +46,8 @@ class Hash(K, V)
 end
 
 struct Int
-  def self.from_bencode(bencode : String | IO)
-    _from_bencode Bencode.parse(bencode)
-  end
-
   def self._from_bencode(bencode : Bencode::Type)
     bencode.as(Int64)
-  end
-
-  def to_bencode : String
-    String.build { |str|
-      to_bencode str
-    }
   end
 
   def to_bencode(io : IO)
@@ -76,18 +58,8 @@ struct Int
 end
 
 class String
-  def self.from_bencode(bencode : String | IO)
-    _from_bencode Bencode.parse(bencode)
-  end
-
   def self._from_bencode(bencode : Bencode::Type)
     bencode.as(String)
-  end
-
-  def to_bencode : String
-    String.build { |str|
-      to_bencode str
-    }
   end
 
   def to_bencode(io : IO)
@@ -104,11 +76,6 @@ end
 
 module Bencode::Serializable
   macro included
-    def to_bencode : String
-      String.build { |str|
-        to_bencode str
-      }
-    end
     def to_bencode(io : IO)
       io << 'd'
       \{% begin %}
@@ -123,10 +90,6 @@ module Bencode::Serializable
         \{% end %}
       \{% end %}
       io << 'e'
-    end
-
-    def self.from_bencode(bencode : String | IO)
-      _from_bencode Bencode.parse(bencode)
     end
 
     def self._from_bencode(bencode : Bencode::Type)

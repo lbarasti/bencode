@@ -120,8 +120,22 @@ end
 
 Parsing with `Bencode.parse` is useful for dealing with a dynamic Bencode structure.
 
+### Custom parsing with _from_bencode
+If Bencode::Serializable does not fit your needs, you can define a custom deserializer for an object of type `T` by defining a `_from_bencode(Bencode::Type) : T` class method on it. For example:
+
+```crystal
+record A, a : String, b : Int64 do
+  def self._from_bencode(obj : Bencode::Type)
+    a, b = obj.as(Array)
+    new a.as(String), b.as(Int64)
+  end
+end
+
+a = A.from_bencode "l5:helloi-42ee" # => A(@a="hello", @b=-42)
+```
+
 ### Generating with to_bencode
-`to_bencode` and `to_bencode(IO)` methods are provided for primitive types, but you need to define `to_bencode(IO)` for custom objects, either manually or using Bencode::Serializable.
+`to_bencode` and `to_bencode(IO)` methods are provided for primitive types, but you need to define `to_bencode(IO)` for custom objects, either manually or using `Bencode::Serializable`.
 
 ## Credits
 * [Hamdiakoguz's  bencoding.cr](https://github.com/Hamdiakoguz/bencoding.cr) has been a huge inspiration for the implementation of the parser. I would have used their shard directly, if it wasn't that `crystal` has evolved with some breaking API changes since the shard was last updated
